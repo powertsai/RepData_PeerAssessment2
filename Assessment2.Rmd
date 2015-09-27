@@ -1,26 +1,30 @@
 ---
-title: "RepData_Assessment2"
+title: "Impact of Major Storms and Weather Events in the United States"
 author: "AllenTsai"
 date: "2015年9月27日"
 output: html_document
 ---
+Synopsis: 
+Across the United States, Tornado is most harmful to  population health. Due to National Weather Service Storm Database, it caused over 9378 fatalities, 1064 injuries, 11960 casualities.
 
-Title: Your document should have a title that briefly summarizes your data analysis
+Across the United States, Flood has greatest economic consequences. Due to National Weather Service Storm Database, it caused over 132,836,489,050 property damage, 5,170,955,450 crop damage,  138,007,444,500 total damage.
+In Central Standard Time Flood cause biggest impact on population health on 1998, but among all year tornado is most harmful.
 
-Synopsis: Immediately after the title, there should be a synopsis which describes and summarizes your analysis in at most 10 complete sentences.
+In Pacific Standard Time, Flood casue biggest property damage on 2006.
+In Eastern Standard Time, Hurricane/Typhoon casuse biggest damage on 2004.
+In Central Standard Time Hurricane/Typhoon cause biggest damage on 2005.
 
-There should be a section titled  which describes (in words and code) how the data were loaded into R and processed for analysis. In particular, your analysis must start from the raw CSV file containing the data. You cannot do any preprocessing outside the document. If preprocessing is time-consuming you may consider using the cache = TRUE option for certain code chunks.
 
-There should be a section titled Results in which your results are presented.
 
 ### Data Processing
 1. use fread to read data, extract csv from bz2 file before processing
 
-```{r, cache=TRUE, result="hide"  readdata}
-setwd("/Users/hadoop")
-#If you want to use fread, please install the dev version
-source("RepData_PeerAssessment2/installPackage.R")
+```{r readdata, cache=TRUE, result="hide"  }
+setwd("/Users/hadoop/RepData_PeerAssessment2")
+#If you want to use fread, please install the dev version  
 
+source("installPackage.R")
+setwd("/Users/hadoop")
 data.file <-"repdata-data-StormData.csv"
 if(require(data.table) && packageVersion("data.table") >= "1.9.5" ) {
         topData <- read.table(data.file, sep=",", nrows = 50, header=TRUE)
@@ -37,6 +41,7 @@ if(require(data.table) && packageVersion("data.table") >= "1.9.5" ) {
   - adjust PROPDMG by PROPDMGEXP (K = 1e3, M = 1e6, B= 1e9)
   - adjust CROPDMG by CROPDMGEXP (K = 1e3, M = 1e6, B= 1e9)
 ```{r cleanData, cache=TRUE, result="hide"}
+require(dplyr)
 cleanData <- function(data) {
         clean.data <- data %>%
                 mutate(EVTYPE = gsub("[^(a-zA-Z0-9/,)]",".", toupper(EVTYPE)) ) %>%
@@ -71,6 +76,7 @@ clean.data <- cleanData(raw.data)
   - index.casualties = sum.FATALITIES * 3 + sum.INJURIES
   I gave FATALITIES a factor of 3 to calculate index.casualties 
 ```{r summaryEventData, cache=TRUE, result="hide"}
+require(dplyr)
 summaryEventData <- function(cleanData) {
         summary.data <- cleanData %>%
                 group_by(EVTYPE) %>%
@@ -89,9 +95,12 @@ summary.event.data <- summaryEventData(clean.data)
 ```
 
 ### Result
-1. arrange summary.event.data order by desc(sum.DMG), get top 20 event
+
+#### Summary Damage by Event Type
+1. order by sum.DMG descending, get top 20 event
 2. economic damaage(property and crop) by event type
 ```{r summary.dmg.data}
+require(ggplot2)
 summary.dmg.data <- summary.event.data %>%
         arrange(desc(sum.DMG)) %>%
         top_n(20) %>%
@@ -105,10 +114,11 @@ p1 <- ggplot(summary.dmg.data, aes(x=EVTYPE, y=sum.DMG))  +
         theme(axis.text.x= element_text(angle=90, vjust=0.6, size=8))+
         theme(title= element_text(vjust=0.6, size=8))
 ```
-
-1. order summary.event.data by desc(index.casualties), get top 20 event
-2. human health impact(FATALITIES + INJURIES) by event type
+#### Summary Casualties by Event Type
+1. order by index.casualties descending, get top 20 event
+2. human health impact(fatalities + injuries)
 ```{r summary.casualties.data}
+require(ggplot2)
 summary.casualties.data <- summary.event.data %>%
         arrange(desc(index.casualties)) %>%
         top_n(20) %>%
@@ -121,15 +131,22 @@ p2 <- ggplot(summary.casualties.data, aes(x=EVTYPE, y=sum.casualties))  +
         theme(axis.text.x= element_text(angle=90, vjust=0.6, size=8))+
         theme(title= element_text(vjust=0.6, size=8))
 ```
-
+plot damage/casualities by Event Type
 ```{r}
-setwd("/Users/hadoop/RepData_PeerAssessment2")
-source("multiplot.R")
-multiplot(p1, p2, cols=2)
+setwd("/Users/hadoop/RepData_PeerAssessment2") 
+require(grid)
+source("multiplot.R") 
+multiplot(p1, p2, cols=2) 
 ```
 
+#### Summary Damage by Top3 Event Across the United States
+1. pickup TIME_ZONE(CST,EST, MST, PST)
+2. pickup top 3 EVENT TYPE (Flood, Hurrican/Typhoon, Tornado)
+3. draw damage (property+crop) by year of event
+http://www.timeanddate.com/time/zones/pst
 
-
+In Pacific Standard Time, Flood 
+(California, Idaho,Nevada,Oregon,Washington)
 ```{r summary.damage}
 summary.damage <- clean.data %>%
             filter(EVTYPE %in% as.data.frame(summary.dmg.data)[1:3,1]) %>%
@@ -145,6 +162,7 @@ summary.damage <- clean.data %>%
 
 pd1 <-  ggplot(aes(x=BGN_YR, col=EVTYPE), data=summary.damage) +        
         geom_line(aes(y= sum.Damage))+
+        geom_point(aes(y= sum.Damage, shape=EVTYPE))+
         facet_wrap(~ TIME_ZONE, ncol=2) +  
         labs(title = "Total damages by Top3 Event Across the United States" ) + 
         labs(y = "Estimates of Damage (property + crop)") +
@@ -154,6 +172,12 @@ pd1 <-  ggplot(aes(x=BGN_YR, col=EVTYPE), data=summary.damage) +
 plot(pd1)
 ```
 
+#### Total Casualties by Top3 Event Across the United States
+1. pickup TIME_ZONE(CST,EST, MST, PST)
+2. pickup top 3 EVENT TYPE (Flood, Flash.Flood, Tornado)
+3. draw casualities (FATALITIES+INJURIES) by year of event
+http://www.timeanddate.com/time/zones/cst
+http://www.timeanddate.com/time/zones/est
 
 ```{r}
 summary.casualties <- clean.data %>%
@@ -168,6 +192,7 @@ summary.casualties <- clean.data %>%
 
 pc1 <- ggplot(aes(x=BGN_YR, col=EVTYPE), data=summary.casualties) +        
         geom_line(aes(y= sum.Casualties, col=EVTYPE))+
+        geom_point(aes(y= sum.Casualties, shape=EVTYPE))+
         scale_x_continuous(breaks=unique(summary.casualties$BGN_YR)) +
         facet_wrap(~ TIME_ZONE) +  
         labs(title = "Total Casualties by Top3 Event Across the United States" ) + 
