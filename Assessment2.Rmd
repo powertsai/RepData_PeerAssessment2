@@ -8,12 +8,10 @@ Synopsis:
 1. Across the United States, Tornado is most harmful to  population health. Due to National Weather Service Storm Database, it caused over 9378 fatalities, 1064 injuries, 11960 casualities.  
   1. In Central Standard Time Flood cause biggest impact on population health on 1998, but among all year tornado is most harmful.  
 
-1. Across the United States, Flood has greatest economic consequences. Due to National Weather Service Storm Database, it caused over 132,836,489,050 property damage, 5,170,955,450 crop damage,  138,007,444,500 total damage.  
-  1. In Pacific Standard Time, Flood casue biggest property damage on 2006.  
-  1. In Eastern Standard Time, Hurricane/Typhoon casuse biggest damage on 2004.  
-  1. In Central Standard Time Hurricane/Typhoon cause biggest damage on 2005.  
-
-
+1. Across the United States, HAIL has greatest economic consequences. Due to National Weather Service Storm Database, it caused over    7,991,783,690 property damage, 127,374,570,870  crop damage,  135,366,354,560 total damage.  
+  1. In Eastern Standard Time, Flood casuse biggest damage on 2011 then Flash Flood on 1996 but the damage is smaller than CST time zone.  
+  1. In Central Standard Time, Flash.Flood cause biggest damage on 2008, but Hail cause largest damange in almost other years.
+  1. In Mountain Standard Time, Hail cause biggest damage on 2010.
 
 ### Data Processing
 1. use fread to read data, extract csv from bz2 file before processing
@@ -37,7 +35,7 @@ if(require(data.table) && packageVersion("data.table") >= "1.9.5" ) {
 2. cleaning data 
   - uppercase EVTYPE, TIME_ZONE, PROPDMGEXP, CROPDMGEXP
   - ignore PROPDMGEXP/CROPDMGEXP not in (B,M,K)
-  - adjust PROPDMG by PROPDMGEXP (K = 1e3, M = 1e6, B= 1e9)
+  - adjust PROPDMG by PROPDMGEXP (K = 1e3, M = 1e6, B= 1e9),when PROPDMG is smaller than PROPDMGEXP(e.g. 1.15e11 B >  1e9)
   - adjust CROPDMG by CROPDMGEXP (K = 1e3, M = 1e6, B= 1e9)
 ```{r cleanData, result="hide"}
 require(dplyr)
@@ -52,13 +50,15 @@ cleanData <- function(data) {
                 mutate(BGN_DATE = as.Date(BGN_DATE, format="%m/%d/%Y")) %>%
                 mutate(BGN_YR = year(BGN_DATE)) %>%
                 mutate(BGN_DECADE = cut(BGN_YR, breaks = c(1949, 1959, 1969, 1979, 1989, 1999,2012) ) )%>%
-                mutate(PROPDMG = ifelse(PROPDMGEXP == "K", PROPDMG * 1000,
-                                        ifelse(PROPDMGEXP == "M", PROPDMG * 1000000, 
-                                               ifelse(PROPDMGEXP == "B", PROPDMG * 1000000000, PROPDMG ) ) )) %>%
-                mutate(CROPDMG = ifelse(CROPDMGEXP == "K", CROPDMG * 1000, 
-                                        ifelse(CROPDMGEXP == "M", CROPDMG * 1000000, 
-                                               ifelse(CROPDMGEXP == "B", CROPDMG * 1000000000, CROPDMG ) ) )) 
+                mutate(PROPDMG = ifelse(PROPDMGEXP == "K", ifelse(PROPDMG > 1000, PROPDMG, PROPDMG * 1000),
+                                        ifelse(PROPDMGEXP == "M", ifelse(PROPDMG > 1000000, PROPDMG, PROPDMG * 1000000), 
+                                               ifelse(PROPDMGEXP == "B", ifelse(PROPDMG > 1000000000, PROPDMG, PROPDMG * 1000000000), PROPDMG ) ) )) %>%
+                mutate(CROPDMG = ifelse(CROPDMGEXP == "K", CROPDMG * ifelse(CROPDMG > 1000, CROPDMG, CROPDMG * 1000) , 
+                                        ifelse(CROPDMGEXP == "M", ifelse(CROPDMG > 1000000, CROPDMG, CROPDMG * 1000000), 
+                                               ifelse(CROPDMGEXP == "B", ifelse(CROPDMG > 1000000000, CROPDMG, CROPDMG * 1000000000) , CROPDMG ) ) )) 
         levels(clean.data$BGN_DECADE) <- c('1950-1959', '1960-1969','1970-1979','1980-1989','1990-1999','2000-2011')
+        #the biggest damange shoud be Hurricane Katrina
+        clean.data <- subset(clean.data, PROPDMG != 115000000000)
         return (clean.data)
 }
 
@@ -73,7 +73,7 @@ clean.data <- cleanData(raw.data)
   - sum.casualties = sum.FATALITIES  + sum.INJURIES
   - index.casualties = sum.FATALITIES * 3 + sum.INJURIES
   I gave FATALITIES a factor of 3 to calculate index.casualties 
-```{r summaryEventData, cache=TRUE, result="hide"}
+```{r summaryEventData, result="hide"}
 require(dplyr)
 summaryEventData <- function(cleanData) {
         summary.data <- cleanData %>%
@@ -142,12 +142,12 @@ multiplot(p1, p2, cols=2)
 
 #### Summary Damage by Top3 Event in different time zone in the United States during the past years
 1. pickup TIME_ZONE(CST,EST, MST, PST)  
-2. pickup top 3 EVENT TYPE (Flood, Hurrican/Typhoon, Tornado)  
-3. plot total damage (property+crop) in different time_zone by year   
-http://www.timeanddate.com/time/zones/pst
-In Pacific Standard Time, Flood cause biggest damage on 2006 and the damage is much larger than other event type.
-In Central Standard Time, Hurricane/Typhoon cause biggest damage on 2004.
-In Eastern Standard Time, Hurricane/Typhoon cause biggest damage 2005.
+2. pickup top 3 EVENT TYPE (Flood, Flash.Flood, Hail)  
+3. plot total damage (property+crop) in different time_zone by year  
+http://www.timeanddate.com/time/zones/cst
+  1. In Eastern Standard Time, Flood casuse biggest damage on 2011 then Flash Flood on 1996 but the damage is smaller than CST time zone.  
+  1. In Central Standard Time, Flash.Flood cause biggest damage on 2008, but Hail cause largest damange in almost other years.
+  1. In Mountain Standard Time, Hail cause biggest damage on 2010.
 
 ```{r summary.damage}
 summary.damage <- clean.data %>%
