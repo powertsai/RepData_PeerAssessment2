@@ -5,13 +5,13 @@ date: "2015年9月27日"
 output: html_document
 ---
 Synopsis: 
-1. Across the United States, Tornado is most harmful to  population health. Due to National Weather Service Storm Database, it caused over 9378 fatalities, 1064 injuries, 11960 casualities.  
-  1. In Central Standard Time Flood cause biggest impact on population health on 1998, but among all year tornado is most harmful.  
+1. Across the United States, Tornado is most harmful to  population health. Due to National Weather Service Storm Database, it caused over 9378 fatalities, 1064 injuries, 11960 casualities.   
+1.1 In Central Standard Time Flood cause biggest impact on population health on 1998, but among all year tornado is most harmful.  
 
-1. Across the United States, HAIL has greatest economic consequences. Due to National Weather Service Storm Database, it caused over    7,991,783,690 property damage, 127,374,570,870  crop damage,  135,366,354,560 total damage.  
-  1. In Eastern Standard Time, Flood casuse biggest damage on 2011 then Flash Flood on 1996 but the damage is smaller than CST time zone.  
-  1. In Central Standard Time, Flash.Flood cause biggest damage on 2008, but Hail cause largest damange in almost other years.
-  1. In Mountain Standard Time, Hail cause biggest damage on 2010.
+2. Across the United States, HAIL has greatest economic consequences. Due to National Weather Service Storm Database, it caused over    7,991,783,690 property damage, 127,374,570,870  crop damage,  135,366,354,560 total damage.  
+  2.1. In Eastern Standard Time, Flood casuse biggest damage on 2011 then Flash Flood on 1996 but the damage is smaller than CST time zone.  
+  2.2. In Central Standard Time, Flash.Flood cause biggest damage on 2008, but Hail cause largest damange in almost other years.
+  2.3. In Mountain Standard Time, Hail cause biggest damage on 2010.
 
 ### Data Processing
 1. use fread to read data, extract csv from bz2 file before processing
