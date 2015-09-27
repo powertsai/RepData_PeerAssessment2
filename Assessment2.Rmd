@@ -5,26 +5,25 @@ date: "2015年9月27日"
 output: html_document
 ---
 Synopsis: 
-Across the United States, Tornado is most harmful to  population health. Due to National Weather Service Storm Database, it caused over 9378 fatalities, 1064 injuries, 11960 casualities.
+1. Across the United States, Tornado is most harmful to  population health. Due to National Weather Service Storm Database, it caused over 9378 fatalities, 1064 injuries, 11960 casualities.  
+  1. In Central Standard Time Flood cause biggest impact on population health on 1998, but among all year tornado is most harmful.  
 
-Across the United States, Flood has greatest economic consequences. Due to National Weather Service Storm Database, it caused over 132,836,489,050 property damage, 5,170,955,450 crop damage,  138,007,444,500 total damage.
-In Central Standard Time Flood cause biggest impact on population health on 1998, but among all year tornado is most harmful.
-
-In Pacific Standard Time, Flood casue biggest property damage on 2006.
-In Eastern Standard Time, Hurricane/Typhoon casuse biggest damage on 2004.
-In Central Standard Time Hurricane/Typhoon cause biggest damage on 2005.
+1. Across the United States, Flood has greatest economic consequences. Due to National Weather Service Storm Database, it caused over 132,836,489,050 property damage, 5,170,955,450 crop damage,  138,007,444,500 total damage.  
+  1. In Pacific Standard Time, Flood casue biggest property damage on 2006.  
+  1. In Eastern Standard Time, Hurricane/Typhoon casuse biggest damage on 2004.  
+  1. In Central Standard Time Hurricane/Typhoon cause biggest damage on 2005.  
 
 
 
 ### Data Processing
 1. use fread to read data, extract csv from bz2 file before processing
 
-```{r readdata, cache=TRUE, result="hide"  }
+```{r readdata, result="hide" } 
 setwd("/Users/hadoop/RepData_PeerAssessment2")
 #If you want to use fread, please install the dev version  
 
 source("installPackage.R")
-setwd("/Users/hadoop")
+setwd("/Users/hadoop/RepData_PeerAssessment2")
 data.file <-"repdata-data-StormData.csv"
 if(require(data.table) && packageVersion("data.table") >= "1.9.5" ) {
         topData <- read.table(data.file, sep=",", nrows = 50, header=TRUE)
@@ -40,7 +39,7 @@ if(require(data.table) && packageVersion("data.table") >= "1.9.5" ) {
   - ignore PROPDMGEXP/CROPDMGEXP not in (B,M,K)
   - adjust PROPDMG by PROPDMGEXP (K = 1e3, M = 1e6, B= 1e9)
   - adjust CROPDMG by CROPDMGEXP (K = 1e3, M = 1e6, B= 1e9)
-```{r cleanData, cache=TRUE, result="hide"}
+```{r cleanData, result="hide"}
 require(dplyr)
 cleanData <- function(data) {
         clean.data <- data %>%
@@ -62,7 +61,6 @@ cleanData <- function(data) {
         levels(clean.data$BGN_DECADE) <- c('1950-1959', '1960-1969','1970-1979','1980-1989','1990-1999','2000-2011')
         return (clean.data)
 }
-
 
 clean.data <- cleanData(raw.data)
 ```
@@ -97,8 +95,7 @@ summary.event.data <- summaryEventData(clean.data)
 ### Result
 
 #### Summary Damage by Event Type
-1. order by sum.DMG descending, get top 20 event
-2. economic damaage(property and crop) by event type
+1. order by sum.DMG descending, and get top 20 events which cause largest damage amont all years.
 ```{r summary.dmg.data}
 require(ggplot2)
 summary.dmg.data <- summary.event.data %>%
@@ -115,14 +112,15 @@ p1 <- ggplot(summary.dmg.data, aes(x=EVTYPE, y=sum.DMG))  +
         theme(title= element_text(vjust=0.6, size=8))
 ```
 #### Summary Casualties by Event Type
-1. order by index.casualties descending, get top 20 event
-2. human health impact(fatalities + injuries)
+1. I use index.casualties = FATALITIES * 3 + INJURIES, to gave death large weight to measure population health impact. 
+1. order by index.casualties descending, and get top 20 event which has largest population health impact(3 * fatalities + injuries)
 ```{r summary.casualties.data}
 require(ggplot2)
 summary.casualties.data <- summary.event.data %>%
         arrange(desc(index.casualties)) %>%
         top_n(20) %>%
         select(EVTYPE, c(1,3,4,8,9))
+
 p2 <- ggplot(summary.casualties.data, aes(x=EVTYPE, y=sum.casualties))  +
         geom_bar(stat="identity")  +
         labs(title = "Total Casualties casuse by Top 20 Weather Event") +
@@ -131,22 +129,26 @@ p2 <- ggplot(summary.casualties.data, aes(x=EVTYPE, y=sum.casualties))  +
         theme(axis.text.x= element_text(angle=90, vjust=0.6, size=8))+
         theme(title= element_text(vjust=0.6, size=8))
 ```
-plot damage/casualities by Event Type
+####  plot total damage/casualities in all years by Event Type
+1. Across the United States, in past years, the Flood has greatest economic consequences. Due to National Weather Service Storm Data, it caused over 132,836,489,050 property damage, 5,170,955,450 crop damage,  138,007,444,500 total damage.  
+1.  Across the United States, in past years, the Tornado is most harmful to population health. Due to National Weather Service Storm Data, it caused over 9378 fatalities, 1064 injuries, and 11960 casualities.
 ```{r}
 setwd("/Users/hadoop/RepData_PeerAssessment2") 
+require(ggplot2)
 require(grid)
 source("multiplot.R") 
 multiplot(p1, p2, cols=2) 
 ```
 
-#### Summary Damage by Top3 Event Across the United States
-1. pickup TIME_ZONE(CST,EST, MST, PST)
-2. pickup top 3 EVENT TYPE (Flood, Hurrican/Typhoon, Tornado)
-3. draw damage (property+crop) by year of event
+#### Summary Damage by Top3 Event in different time zone in the United States during the past years
+1. pickup TIME_ZONE(CST,EST, MST, PST)  
+2. pickup top 3 EVENT TYPE (Flood, Hurrican/Typhoon, Tornado)  
+3. plot total damage (property+crop) in different time_zone by year   
 http://www.timeanddate.com/time/zones/pst
+In Pacific Standard Time, Flood cause biggest damage on 2006 and the damage is much larger than other event type.
+In Central Standard Time, Hurricane/Typhoon cause biggest damage on 2004.
+In Eastern Standard Time, Hurricane/Typhoon cause biggest damage 2005.
 
-In Pacific Standard Time, Flood 
-(California, Idaho,Nevada,Oregon,Washington)
 ```{r summary.damage}
 summary.damage <- clean.data %>%
             filter(EVTYPE %in% as.data.frame(summary.dmg.data)[1:3,1]) %>%
@@ -172,12 +174,14 @@ pd1 <-  ggplot(aes(x=BGN_YR, col=EVTYPE), data=summary.damage) +
 plot(pd1)
 ```
 
-#### Total Casualties by Top3 Event Across the United States
+#### Total Casualties by Top3 Event in different time zone in the United States during the past years
 1. pickup TIME_ZONE(CST,EST, MST, PST)
 2. pickup top 3 EVENT TYPE (Flood, Flash.Flood, Tornado)
-3. draw casualities (FATALITIES+INJURIES) by year of event
-http://www.timeanddate.com/time/zones/cst
-http://www.timeanddate.com/time/zones/est
+3. plot casualities (FATALITIES+INJURIES) in different time_zone by year
+
+In differnt time zone in the United States, which event type has biggest population health impact has little difference.
+1. In Central Standard Time Flood cause biggest impact on population health on 1998, but among all year tornado is most harmful. 
+1. In Pacific Standard Time, tornado cause biggest damage on 2011.
 
 ```{r}
 summary.casualties <- clean.data %>%
@@ -200,6 +204,5 @@ pc1 <- ggplot(aes(x=BGN_YR, col=EVTYPE), data=summary.casualties) +
         labs(x = "Year of Event")  +
         theme(axis.text.y=element_text(vjust=0.5,hjust=0.5, size=8))+ 
         theme(axis.text.x= element_text(angle=90, vjust=0.5, size=8))    
-
 plot(pc1)
 ```

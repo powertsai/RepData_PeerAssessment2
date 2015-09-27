@@ -8,7 +8,6 @@ remove.packages("data.table")
 # install dev version of data.table
 install_github("Rdatatable/data.table", build_vignettes = FALSE)  
 
-
 #using dplyr to cleaning data
 if(!require(dplyr)) {
         install.packages("dplyr")
