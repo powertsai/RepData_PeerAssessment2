@@ -14,3 +14,16 @@ if(!require(dplyr)) {
         install.packages("dplyr")
         require(dplyr)
 }
+
+# using ggplot2 to create graph
+if(!require(ggplot2)) {
+        install.packages("ggplot2")
+        require(ggplot2)
+}
+
+#using grid
+if(!require(grid)) {
+        install.packages("grid")
+        require(grid)
+}
+

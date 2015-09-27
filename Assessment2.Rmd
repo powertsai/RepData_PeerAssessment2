@@ -1,0 +1,180 @@
+---
+title: "RepData_Assessment2"
+author: "AllenTsai"
+date: "2015年9月27日"
+output: html_document
+---
+
+Title: Your document should have a title that briefly summarizes your data analysis
+
+Synopsis: Immediately after the title, there should be a synopsis which describes and summarizes your analysis in at most 10 complete sentences.
+
+There should be a section titled  which describes (in words and code) how the data were loaded into R and processed for analysis. In particular, your analysis must start from the raw CSV file containing the data. You cannot do any preprocessing outside the document. If preprocessing is time-consuming you may consider using the cache = TRUE option for certain code chunks.
+
+There should be a section titled Results in which your results are presented.
+
+### Data Processing
+1. use fread to read data, extract csv from bz2 file before processing
+
+```{r, cache=TRUE, result="hide"  readdata}
+setwd("/Users/hadoop")
+#If you want to use fread, please install the dev version
+source("RepData_PeerAssessment2/installPackage.R")
+
+data.file <-"repdata-data-StormData.csv"
+if(require(data.table) && packageVersion("data.table") >= "1.9.5" ) {
+        topData <- read.table(data.file, sep=",", nrows = 50, header=TRUE)
+        col.classes <- sapply(topData, class)
+        raw.data <- fread(data.file, header= TRUE, sep=",", colClasses = col.classes)
+} else {
+        raw.data <- read.table(data.file, sep=",", header = TRUE)
+}
+```
+
+2. cleaning data 
+  - uppercase EVTYPE, TIME_ZONE, PROPDMGEXP, CROPDMGEXP
+  - ignore PROPDMGEXP/CROPDMGEXP not in (B,M,K)
+  - adjust PROPDMG by PROPDMGEXP (K = 1e3, M = 1e6, B= 1e9)
+  - adjust CROPDMG by CROPDMGEXP (K = 1e3, M = 1e6, B= 1e9)
+```{r cleanData, cache=TRUE, result="hide"}
+cleanData <- function(data) {
+        clean.data <- data %>%
+                mutate(EVTYPE = gsub("[^(a-zA-Z0-9/,)]",".", toupper(EVTYPE)) ) %>%
+                mutate(TIME_ZONE = toupper(TIME_ZONE)) %>%
+                mutate(PROPDMGEXP = toupper(PROPDMGEXP)) %>%
+                mutate(CROPDMGEXP = toupper(CROPDMGEXP)) %>%
+                filter(PROPDMGEXP %in% c("B","M","K")) %>%
+                filter(CROPDMGEXP %in% c("B","M","K")) %>%
+                mutate(BGN_DATE = as.Date(BGN_DATE, format="%m/%d/%Y")) %>%
+                mutate(BGN_YR = year(BGN_DATE)) %>%
+                mutate(BGN_DECADE = cut(BGN_YR, breaks = c(1949, 1959, 1969, 1979, 1989, 1999,2012) ) )%>%
+                mutate(PROPDMG = ifelse(PROPDMGEXP == "K", PROPDMG * 1000,
+                                        ifelse(PROPDMGEXP == "M", PROPDMG * 1000000, 
+                                               ifelse(PROPDMGEXP == "B", PROPDMG * 1000000000, PROPDMG ) ) )) %>%
+                mutate(CROPDMG = ifelse(CROPDMGEXP == "K", CROPDMG * 1000, 
+                                        ifelse(CROPDMGEXP == "M", CROPDMG * 1000000, 
+                                               ifelse(CROPDMGEXP == "B", CROPDMG * 1000000000, CROPDMG ) ) )) 
+        levels(clean.data$BGN_DECADE) <- c('1950-1959', '1960-1969','1970-1979','1980-1989','1990-1999','2000-2011')
+        return (clean.data)
+}
+
+
+clean.data <- cleanData(raw.data)
+```
+3. summary clean data by Event Type
+  - sum.FATALITIES
+  - sum.INJURIES
+  - sum.PROPDMG
+  - sum.CROPDMG
+  - sum.DMG = sum.PROPDMG + sum.CROPDMG
+  - sum.casualties = sum.FATALITIES  + sum.INJURIES
+  - index.casualties = sum.FATALITIES * 3 + sum.INJURIES
+  I gave FATALITIES a factor of 3 to calculate index.casualties 
+```{r summaryEventData, cache=TRUE, result="hide"}
+summaryEventData <- function(cleanData) {
+        summary.data <- cleanData %>%
+                group_by(EVTYPE) %>%
+                summarise(event.count=n() ,
+                          sum.FATALITIES = sum(FATALITIES, na.rm= TRUE),
+                          sum.INJURIES = sum(INJURIES, na.rm= TRUE),
+                          sum.PROPDMG = sum(PROPDMG, na.rm= TRUE),
+                          sum.CROPDMG = sum(CROPDMG, na.rm= TRUE)) %>%
+                mutate(sum.DMG = sum.PROPDMG + sum.CROPDMG)  %>%
+                mutate(sum.casualties = sum.FATALITIES  + sum.INJURIES) %>%
+                mutate(index.casualties = sum.FATALITIES * 3 + sum.INJURIES)
+        return (summary.data)
+}  
+
+summary.event.data <- summaryEventData(clean.data)
+```
+
+### Result
+1. arrange summary.event.data order by desc(sum.DMG), get top 20 event
+2. economic damaage(property and crop) by event type
+```{r summary.dmg.data}
+summary.dmg.data <- summary.event.data %>%
+        arrange(desc(sum.DMG)) %>%
+        top_n(20) %>%
+        select(EVTYPE, c(1,5,6,7))
+
+p1 <- ggplot(summary.dmg.data, aes(x=EVTYPE, y=sum.DMG))  +
+        geom_bar(stat="identity")  +
+        labs(title = "Total damages casuse by Top 20 Weather Event") +
+        labs(y = "Estimates of Damage (property + crop) ") +
+        labs(x = "Event Type") +
+        theme(axis.text.x= element_text(angle=90, vjust=0.6, size=8))+
+        theme(title= element_text(vjust=0.6, size=8))
+```
+
+1. order summary.event.data by desc(index.casualties), get top 20 event
+2. human health impact(FATALITIES + INJURIES) by event type
+```{r summary.casualties.data}
+summary.casualties.data <- summary.event.data %>%
+        arrange(desc(index.casualties)) %>%
+        top_n(20) %>%
+        select(EVTYPE, c(1,3,4,8,9))
+p2 <- ggplot(summary.casualties.data, aes(x=EVTYPE, y=sum.casualties))  +
+        geom_bar(stat="identity")  +
+        labs(title = "Total Casualties casuse by Top 20 Weather Event") +
+        labs(y = "Casualties (fatalities + injuries) ") +
+        labs(x = "Event Type") +
+        theme(axis.text.x= element_text(angle=90, vjust=0.6, size=8))+
+        theme(title= element_text(vjust=0.6, size=8))
+```
+
+```{r}
+setwd("/Users/hadoop/RepData_PeerAssessment2")
+source("multiplot.R")
+multiplot(p1, p2, cols=2)
+```
+
+
+
+```{r summary.damage}
+summary.damage <- clean.data %>%
+            filter(EVTYPE %in% as.data.frame(summary.dmg.data)[1:3,1]) %>%
+            filter(TIME_ZONE %in% c("PST","MST","EST","CST")) %>%
+            group_by(EVTYPE,BGN_YR,TIME_ZONE) %>%
+            summarise(event.count=n() ,
+                  sum.PROPDMG = sum(PROPDMG, na.rm= TRUE),
+                  mean.PROPDMG = mean(PROPDMG, na.rm= TRUE),
+                  sum.CROPDMG = sum(CROPDMG, na.rm= TRUE),
+                  mean.CROPDMG = mean(CROPDMG, na.rm= TRUE)) %>%
+        mutate(sum.Damage = sum.PROPDMG + sum.CROPDMG)  %>%
+        mutate(mean.Damage = mean.PROPDMG + mean.CROPDMG) 
+
+pd1 <-  ggplot(aes(x=BGN_YR, col=EVTYPE), data=summary.damage) +        
+        geom_line(aes(y= sum.Damage))+
+        facet_wrap(~ TIME_ZONE, ncol=2) +  
+        labs(title = "Total damages by Top3 Event Across the United States" ) + 
+        labs(y = "Estimates of Damage (property + crop)") +
+        labs(x = "Year of Event")  +
+        theme(title=element_text(vjust=0.5,hjust=0.5, size=7))+ 
+        theme(axis.text.x= element_text(angle=0, vjust=0.5, size=8))    
+plot(pd1)
+```
+
+
+```{r}
+summary.casualties <- clean.data %>%
+        filter(EVTYPE %in% as.data.frame(summary.casualties.data)[1:3,1]) %>%
+        filter(TIME_ZONE %in% c("PST","MST","EST","CST")) %>%
+        group_by(EVTYPE,BGN_YR,TIME_ZONE) %>%
+        summarise(event.count=n() ,
+                  sum.FATALITIES = sum(FATALITIES, na.rm= TRUE),
+                  sum.INJURIES = sum(INJURIES, na.rm= TRUE)) %>%
+        mutate(sum.Casualties = sum.FATALITIES + sum.INJURIES)  
+
+
+pc1 <- ggplot(aes(x=BGN_YR, col=EVTYPE), data=summary.casualties) +        
+        geom_line(aes(y= sum.Casualties, col=EVTYPE))+
+        scale_x_continuous(breaks=unique(summary.casualties$BGN_YR)) +
+        facet_wrap(~ TIME_ZONE) +  
+        labs(title = "Total Casualties by Top3 Event Across the United States" ) + 
+        labs(y = "Casualties(Fatalities + Injuries)") +
+        labs(x = "Year of Event")  +
+        theme(axis.text.y=element_text(vjust=0.5,hjust=0.5, size=8))+ 
+        theme(axis.text.x= element_text(angle=90, vjust=0.5, size=8))    
+
+plot(pc1)
+```
