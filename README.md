@@ -2,10 +2,10 @@
 # multiplot.R
   combine ggplot plot into one panel plot
 # installPackage.R 
-  # data.table (dev version)
-  # dplyr
-  # grid
-  # ggplot2  
+   # data.table (dev version) 
+   # dplyr
+   # grid
+   # ggplot2  
 # ProjectAssisment2.R 
   R source code for this assignment 
 # Place Strom Data in your working directory
