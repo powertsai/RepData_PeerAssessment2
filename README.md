@@ -11,3 +11,7 @@
 # Place Strom Data in your working directory
   1. download bz2 file from https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2
   1. extract repdata-data-StormData.csv and put file into /RepData_PeerAssessment2
+# I submit assignment just before deadline, I found I made mistake to change damange by PROPDMGEXP
+  I extract the transfer into function and using mutate to reproduce report  
+  I reproduce report on http://rpubs.com/AllenMLTsai/RepData2 after the deadline.
+  
